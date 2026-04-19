@@ -6,9 +6,9 @@ Public paths (listed in PUBLIC_PATHS) bypass the check; everything else
 requires a matching X-Webhook-Secret header or returns 401 Unauthorized.
 """
 
-import os
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
+from server.utils.config import settings
 
 # Paths that skip auth entirely
 PUBLIC_PATHS = {
@@ -36,7 +36,7 @@ class WebhookSecretMiddleware(BaseHTTPMiddleware):
 
         # Compare againt env var on every request rather than caching
         # at module load.
-        expected = os.environ.get("WEBHOOK_SECRET")
+        expected = settings.WEBHOOK_SECRET
         if not expected:
             return JSONResponse(
                 {"error": "Server auth not configured"},

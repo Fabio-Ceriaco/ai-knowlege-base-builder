@@ -7,13 +7,13 @@
 -- IF NOT EXISTS = idempotent — safe to run multiple times.
 -- ============================================================
 
--- create extension if not exists vector;
+create extension if not exists vector;
 
 -- Verify installation - expect one row with extname = 'vector'
 
--- select extname, extversion
--- from pg_extension
--- where extname = 'vector';
+select extname, extversion
+from pg_extension
+where extname = 'vector';
 
 
 -- ============================================================
@@ -130,10 +130,10 @@ create index if not exists idx_gaps_reviewed
 -- Uncomment and run after seed_documents.py has inserted chunks.
 -- ============================================================
 
--- create index if not exists idx_chunks_embedding
---		on document_chunks
---		using ivfflat (embedding vector_cosin_ops)
---		with (list = 100);
+create index if not exists idx_chunks_embedding
+		on document_chunks
+		using ivfflat (embedding vector_cosine_ops)
+		with (lists = 100);
 
 
 

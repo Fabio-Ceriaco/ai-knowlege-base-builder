@@ -7,21 +7,20 @@ using plain Python lists or numpy arrays without manual serialization.
 """
 
 import psycopg2
-import os
 from contextlib import contextmanager
-
-import psycopg2
 from psycopg2.extras import RealDictCursor
 from pgvector.psycopg2 import register_vector
+from server.utils.config import settings
+
 
 # DB config
 
 DB_CONFIG = {
-    "host": os.environ.get("DB_HOST"),
-    "port": os.environ.get("DB_PORT"),
-    "dbname": os.environ.get("DB_NAME"),
-    "user": os.environ.get("DB_USER"),
-    "password": os.environ.get("DB_PASSWORD"),
+    "host": settings.DB_HOST,
+    "port": settings.DB_PORT,
+    "dbname": settings.DB_NAME,
+    "user": settings.DB_USER,
+    "password": settings.DB_PASSWORD,
 }
 
 

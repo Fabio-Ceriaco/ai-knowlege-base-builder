@@ -21,10 +21,11 @@ import os
 import time
 import logging
 import voyageai
+from server.utils.config import settings
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "voyage-3.5")
+EMBEDDING_MODEL = settings.VOYAGE_EMBED_MODEL
 EXPECTED_DIMENSIONS = 1024
 
 # Retry configuration
@@ -35,7 +36,7 @@ BACKOFF_BASE = 2
 # Voyage client
 # ============================================================================
 
-_client = voyageai.Client()
+_client = voyageai.Client(api_key=settings.VOYAGE_API_KEY)
 
 # Valid input_type values
 VALID_IMPUT_TYPES = {"document", "query"}

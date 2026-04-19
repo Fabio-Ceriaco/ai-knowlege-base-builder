@@ -40,6 +40,7 @@ pydantic==2.12.5
 pydantic_core==2.41.5
 Pygments==2.20.0
 PyMuPDF==1.27.2.2
+python-dotenv==1.2.2
 PyYAML==6.0.3
 regex==2026.4.4
 requests==2.33.1
@@ -56,6 +57,7 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 urllib3==2.6.3
 uuid_utils==0.14.1
+uvicorn==0.44.0
 voyageai==0.3.7
 xxhash==3.6.0
 yarl==1.23.0

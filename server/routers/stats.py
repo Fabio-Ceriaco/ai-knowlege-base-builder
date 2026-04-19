@@ -26,7 +26,7 @@ def stats():
         questions_asked = cur.fetchone()["n"]
 
         return {
-            "doduments": documents,
+            "documents": documents,
             "chunks": chunks,
             "open_gaps": open_gaps,
             "questions_asked": questions_asked,
