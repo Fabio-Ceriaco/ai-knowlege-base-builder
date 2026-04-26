@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 
 from server.middleware.auth import WebhookSecretMiddleware
-from server.routers import health, stats, documents, ingest
+from server.routers import health, stats, documents, ingest, ask
 
 app = FastAPI(
     title="AI Knwledge Base Builder",
@@ -19,3 +19,4 @@ app.include_router(health.router)
 app.include_router(stats.router)
 app.include_router(documents.router)
 app.include_router(ingest.router)
+app.include_router(ask.router)

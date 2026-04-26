@@ -1,10 +1,10 @@
 """Semantic search over document chunks using pgvector cosin similarity."""
 
-import os
 import logging
 from dotenv import load_dotenv
 from server.database import get_cursor
 from server.services.embedder import embed_single
+from server.utils.config import settings
 
 load_dotenv()
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Top-K chunks to retrieve. Read from env so it's tunable without code changes.
 
-TOP_K = int(os.getenv("TOP_K", 5))
+TOP_K = int(settings.TOP_K)
 
 
 def retrieve_chunks(question: str) -> dict:
@@ -39,7 +39,7 @@ def retrieve_chunks(question: str) -> dict:
         dict with keys:
             - chunks: list of dicts (id, document_id, chunk_index, chunk_text,
             token_count, similarity, document_title)
-            - chunk_ids: list of chunk IDs used (for questions_log)
+            - chunks_ids: list of chunk IDs used (for questions_log)
             - max_similarity: highest similarity score (for gap detection)
             - top_k: how many chunks were requested
     """
@@ -85,7 +85,7 @@ def retrieve_chunks(question: str) -> dict:
                 "chunk_index": row["chunk_index"],
                 "chunk_text": row["chunk_text"],
                 "token_count": row["token_count"],
-                "similarity": round(1 - float(row["distance"], 4)),
+                "similarity": round(1 - float(row["distance"]), 4),
                 "document_title": row["document_title"],
             }
         )
@@ -100,7 +100,7 @@ def retrieve_chunks(question: str) -> dict:
 
     return {
         "chunks": chunks,
-        "chunk_ids": chunk_ids,
+        "chunks_ids": chunk_ids,
         "max_similarity": max_similarity,
         "top_k": TOP_K,
     }
