@@ -3,11 +3,11 @@
 from fastapi import FastAPI
 
 from server.middleware.auth import WebhookSecretMiddleware
-from server.routers import health, stats, documents, ingest, ask
+from server.routers import health, stats, documents, ingest, ask, gaps
 
 app = FastAPI(
     title="AI Knwledge Base Builder",
-    discription="RAG-powered knowledge base with pgvector and Voyage embeddings",
+    description="RAG-powered knowledge base with pgvector and Voyage embeddings",
     version="0.1.0",
 )
 
@@ -20,3 +20,4 @@ app.include_router(stats.router)
 app.include_router(documents.router)
 app.include_router(ingest.router)
 app.include_router(ask.router)
+app.include_router(gaps.router)
