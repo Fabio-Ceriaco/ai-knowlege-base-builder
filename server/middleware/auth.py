@@ -29,12 +29,18 @@ class WebhookSecretMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request, call_next):
-        # Public paths go stright through - no header check at all
+        # Allow OPTIONS preflight requests through without auth
+        # Browsers send OPTIONS with no custom headers before every
+        # cross-origin request - blocking them breaks CORS entirely
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
+        # Public paths go straight through - no header check at all
 
         if request.url.path in PUBLIC_PATHS:
             return await call_next(request)
 
-        # Compare againt env var on every request rather than caching
+        # Compare against env var on every request rather than caching
         # at module load.
         expected = settings.WEBHOOK_SECRET
         if not expected:

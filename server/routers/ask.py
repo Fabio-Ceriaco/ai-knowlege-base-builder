@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from server.database import get_cursor
 from server.services.retriever import retrieve_chunks
-from server.services.generator import generate_answer
+from server.services.generator import generate_answer, label_gap_topic
 from server.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -171,21 +171,49 @@ def _log_question(
 
 def _log_gap(question_id: int, question: str, max_similarity: float):
     """
-    Write one row to coverage_gaps when a question hits below the threshold.
+    Write one row to coverage:gaps, then immediately label its gap_topic via Claude.
 
-    gap_topic add Claude-inferred topic clustering to automatically label what subject area the gap falls in.
-
+    Two-phase write:
+    1. INSERT gap row -> gap back its id via RETURNING
+    2. Call label_gap_topic() -> short Claude call, returns topic string
+    3. UPDATE that row's gap_topic
     """
+
+    # --- insert gap row, capture its id ---
     with get_cursor(commit=True) as cur:
         cur.execute(
             """
-                INSERT INTO coverage_gaps 
+                INSERT INTO coverage_gaps
                     (question_id, question, max_similarity)
-                VALUES (%s, %s, %s)
+                VALUES (%s,%s,%s)
+                RETURNING id
             """,
             (question_id, question, max_similarity),
         )
+
+        gap_id = cur.fetchone()["id"]
     logger.info(
-        f"Coverage gap logged - question_id={question_id}, "
+        f"Coverage gap logged - gap_id={gap_id}, question_id={question_id}, "
         f"max_similarity={max_similarity:.4f}"
     )
+
+    # --- Update the gap row with the topic label ---
+    topic = label_gap_topic(question)
+
+    # --- Update the gap row with the topic label ---
+    try:
+        with get_cursor(commit=True) as cur:
+            cur.execute(
+                """
+                    UPDATE coverage_gaps
+                    SET gap_topic = %s
+                    WHERE id = %s
+                """,
+                (topic, gap_id),
+            )
+        logger.info(f"Gap topic updated - gap_id={gap_id}, topic='{topic}'")
+
+    except Exception as e:
+        # Non-fatal - gap row exists, topic update failed
+        # The "Uncategorized" fallback from label_gap_topic() is still useful context
+        logger.error(f"Failed to update gap_topic for gap_id={gap_id}: {str(e)}")

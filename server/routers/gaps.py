@@ -22,7 +22,7 @@ router = APIRouter()
 @router.get("/gaps")
 def list_gaps():
     """
-    Return all unreviewd coverage gaps, newest first.
+    Return all unrevised coverage gaps, newest first.
 
     Each row contains:
         - id: gap primary key

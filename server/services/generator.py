@@ -178,3 +178,117 @@ def generate_answer(question: str, chunks: list) -> dict:
             raise RuntimeError(f"Failed to parse Claude response: {e}")
 
     raise RuntimeError(f"Claude API failed after {MAX_RETRIES} attempts: {last_error}")
+
+
+# --- System prompt for gap topic labelling --
+
+GAP_TOPIC_SYSTEM_PROMPT = """
+    You are a knowledge base analyst.
+    You will receive a question that user asked but the knowledge base could not answer.
+    Your job is to infer the topic or subject area that question belongs to.
+    
+    Return only JSON object (no markdown, no backticks):
+    {
+        "gap_topic": "<short topic label, 2-5 words, title case>"
+    }
+    
+    Examples of good gap_topic values:
+    - "Kubernetes Pod Autoscaling"
+    - "PostgreSQL Replication"
+    - "OAuth2 Authentication"
+    - "Docker Networking"
+    
+    Be specific enough to be useful, but general enough to group similar questions together.
+"""
+
+
+def label_gap_topic(question: str) -> str:
+    """
+    Call Claude to infer a short topic label for a gap question.
+
+    Called immediately after a gap row is inserted into coverage_gaps.
+    Returns a short string like "Kubernetes Pod Autoscaling".
+
+    On any failure (API error, parse error), returns "Uncategorized"
+    so the gap row always has a non-null gap_topic.
+
+    Args:
+        question: The user's question that produced a gap
+
+    Returns:
+        str: Short topic label (2-5 words, title case)
+    """
+
+    last_error = None
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            logger.info(f"Gap topic labelling - attempt {attempt}/{MAX_RETRIES}")
+
+            response = client.messages.create(
+                model=GENERATION_MODEL,
+                max_tokens=64,
+                system=GAP_TOPIC_SYSTEM_PROMPT,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Question: {question}\n\nRespond with JSON only.",
+                    }
+                ],
+            )
+
+            # --- stop_reason guard ---
+            if response.stop_reason != "end_turn":
+                raise ValueError(
+                    f"Unexpected stop_reason: ´{response.stop_reason}´."
+                    f"Response may be truncated."
+                )
+
+            # --- Extract and clean text ---
+            raw_text = response.content[0].text.strip()
+            clean_text = raw_text
+
+            # --- Strip markdown fences if Claude adds them despite instructions
+            if clean_text.startswith("```"):
+                clean_text = clean_text.lstrip("`")
+                if clean_text.startswith("json"):
+                    clean_text = clean_text[4:]
+                clean_text = clean_text.rstrip("`").strip()
+            parsed = json.loads(clean_text)
+
+            if "gap_topic" not in parsed:
+                raise ValueError("Claude response missing 'gap_topic' key")
+
+            topic = str(parsed["gap_topic"]).strip()
+
+            # --- Sanity check - reject empty or absurdly long labels ---
+
+            if not topic or len(topic) > 100:
+                raise ValueError(f"Invalid gap_topic value: '{topic}'")
+
+            logger.info(f"Gap topic labelled: '{topic}'")
+            return topic
+        except (anthropic.APIError, anthropic.APIConnectionError) as e:
+            last_error = str(e)
+            if attempt < MAX_RETRIES:
+                wait = BACKOFF_BASE**attempt
+                logger.warning(
+                    f"API error no gap labelling (attempt {attempt}): {e}."
+                    f"Retrying in {wait}s..."
+                )
+                time.sleep(wait)
+            else:
+                logger.error(
+                    f"Gap labelling API error after {MAX_RETRIES} attempts: {e}"
+                )
+        except (json.JSONDecodeError, ValueError) as e:
+            # --- Parse errors are not retryable ---
+            logger.error(f"Gap labelling parse error: {e}")
+            break
+
+    # --- Fallback - gap row will still exist, just without a meaningful topic ---
+    logger.warning(
+        f"Gap topic labelling failed after all attempts. "
+        f"Falling back to 'Uncategorized'. Last error: {last_error}"
+    )
+    return "Uncategorized"
